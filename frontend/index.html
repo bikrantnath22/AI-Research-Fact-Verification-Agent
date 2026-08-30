@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research Agent — AI Fact-Verification Dashboard</title>
+    <meta name="description"
+        content="Multi-agent AI research system with hallucination detection via semantic entropy and ensemble disagreement.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ── Reset & Tokens ──────────────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary:    #060914;
+            --bg-secondary:  #0c1020;
+            --bg-card:       #111827;
+            --bg-card-hover: #151e30;
+            --bg-input:      #0a0f1e;
+            --border:        #1e2a45;
+            --border-light:  #243254;
+            --border-focus:  #5b7cf6;
+            --text-primary:  #e8edf8;
+            --text-secondary:#8892b0;
+            --text-muted:    #4a5568;
+            --accent:        #5b7cf6;
+            --accent-2:      #818cf8;
+            --accent-glow:   rgba(91, 124, 246, 0.12);
+            --accent-glow-2: rgba(91, 124, 246, 0.06);
+            --green:         #10b981;
+            --green-dim:     rgba(16, 185, 129, 0.10);
+            --yellow:        #f59e0b;
+            --yellow-dim:    rgba(245, 158, 11, 0.10);
+            --red:           #ef4444;
+            --red-dim:       rgba(239, 68, 68, 0.10);
+            --cyan:          #22d3ee;
+            --cyan-dim:      rgba(34, 211, 238, 0.10);
+            --purple:        #a78bfa;
+            --purple-dim:    rgba(167, 139, 250, 0.10);
+            --radius:        14px;
+            --radius-sm:     8px;
+            --radius-xs:     5px;
+            --transition:    0.22s cubic-bezier(0.4, 0, 0.2, 1);
+            --font:          'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono:     'JetBrains Mono', 'Fira Code', monospace;
+            --shadow-card:   0 4px 24px rgba(0,0,0,0.35);
+            --shadow-glow:   0 0 40px rgba(91,124,246,0.08);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* ── Background grid ──────────────────────────────────────────────── */
+        body::before {
+            content: '';
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background-image:
+                linear-gradient(rgba(91,124,246,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(91,124,246,0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            top: -30vh; left: 50%; transform: translateX(-50%);
+            width: 80vw; height: 60vh;
+            background: radial-gradient(ellipse, rgba(91,124,246,0.07) 0%, transparent 70%);
+            pointer-events: none; z-index: 0;
+        }
+
+        /* ── Layout ──────────────────────────────────────────────────────── */
+        .app { 
+            max-width: 920px; margin: 0 auto; 
+            padding: 0 24px 100px; 
+            position: relative; z-index: 1;
+        }
+
+        /* ── Hero Header ─────────────────────────────────────────────────── */
+        .hero {
+            text-align: center;
+            padding: 72px 0 52px;
+        }
+
+        .hero__eyebrow {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(91,124,246,0.08);
+            border: 1px solid rgba(91,124,246,0.2);
+            color: var(--accent-2); font-size: 11px; font-weight: 600;
+            letter-spacing: 0.1em; text-transform: uppercase;
+            padding: 6px 16px; border-radius: 100px; margin-bottom: 28px;
+        }
+        .hero__eyebrow-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--accent); flex-shrink: 0;
+            animation: pulse-dot 2.4s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(91,124,246,0.5); }
+            50% { opacity: 0.7; box-shadow: 0 0 0 5px rgba(91,124,246,0); }
+        }
+
+        .hero__title {
+            font-size: clamp(28px, 5vw, 42px);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.15;
+            margin-bottom: 16px;
+        }
+        .hero__title-line1 {
+            display: block;
+            background: linear-gradient(135deg, #e8edf8 0%, #b4c0e8 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero__title-line2 {
+            display: block;
+            background: linear-gradient(135deg, #5b7cf6 0%, #818cf8 50%, #a78bfa 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero__sub {
+            font-size: 15px; color: var(--text-secondary);
+            max-width: 520px; margin: 0 auto 36px;
+            line-height: 1.7;
+        }
+
+        /* Stats row */
+        .hero__stats {
+            display: flex; justify-content: center; gap: 32px;
+            flex-wrap: wrap;
+        }
+        .hero__stat {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 12px; color: var(--text-muted);
+        }
+        .hero__stat-dot {
+            width: 5px; height: 5px; border-radius: 50%;
+            background: var(--accent); opacity: 0.6;
+        }
+
+        /* ── Divider ─────────────────────────────────────────────────────── */
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-light), transparent);
+            margin-bottom: 32px;
+        }
+
+        /* ── Input Card ──────────────────────────────────────────────────── */
+        .input-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-card), var(--shadow-glow);
+            position: relative;
+            overflow: hidden;
+        }
+        .input-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(91,124,246,0.4), transparent);
+        }
+
+        .input-card__label {
+            font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+            text-transform: uppercase; color: var(--text-muted);
+            margin-bottom: 14px;
+        }
+
+        .input-row { display: flex; gap: 10px; margin-bottom: 14px; }
+
+        #query-input {
+            flex: 1;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-family: var(--font); font-size: 14px;
+            padding: 13px 18px; outline: none;
+            transition: border-color var(--transition), box-shadow var(--transition);
+        }
+        #query-input:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(91,124,246,0.08);
+        }
+        #query-input::placeholder { color: var(--text-muted); }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 13px 22px; border: none; border-radius: var(--radius-sm);
+            font-family: var(--font); font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: all var(--transition); white-space: nowrap;
+        }
+        .btn--primary {
+            background: linear-gradient(135deg, #5b7cf6 0%, #4a68e8 100%);
+            color: white;
+            box-shadow: 0 2px 12px rgba(91,124,246,0.25);
+        }
+        .btn--primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(91,124,246,0.35);
+        }
+        .btn--primary:active { transform: translateY(0); }
+        .btn--primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .btn--upload {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .btn--upload:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+        .upload-info {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 12px; color: var(--text-muted);
+            padding: 8px 0 0;
+        }
+        .upload-info .filename { color: var(--cyan); font-family: var(--font-mono); font-size: 11px; }
+        .upload-info .chip {
+            background: var(--cyan-dim); color: var(--cyan);
+            padding: 2px 10px; border-radius: 100px; font-size: 11px; font-weight: 600;
+        }
+
+        #file-input { display: none; }
+
+        /* ── Pipeline Steps ──────────────────────────────────────────────── */
+        .pipeline { display: none; margin-bottom: 20px; }
+        .pipeline.active { display: block; }
+
+        .pipeline__track {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px 24px;
+            display: flex; align-items: center; gap: 6px;
+            overflow-x: auto;
+        }
+
+        .step {
+            display: flex; align-items: center; gap: 8px;
+            padding: 7px 16px; border-radius: var(--radius-xs);
+            font-size: 12px; font-weight: 500;
+            color: var(--text-muted);
+            transition: all var(--transition);
+            white-space: nowrap;
+            border: 1px solid transparent;
+        }
+        .step.active {
+            background: var(--accent-glow);
+            border-color: rgba(91,124,246,0.2);
+            color: var(--accent-2);
+        }
+        .step.active .step__icon { animation: icon-pulse 1s ease-in-out infinite; }
+        @keyframes icon-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+        .step.done { color: var(--green); }
+        .step__icon { font-size: 14px; }
+        .step__arrow { color: var(--border-light); font-size: 12px; margin: 0 4px; }
+
+        /* ── Verifier Loader ─────────────────────────────────────────────── */
+        .verifier-loader {
+            display: none;
+            background: var(--bg-card);
+            border: 1px solid rgba(91,124,246,0.2);
+            border-radius: var(--radius);
+            padding: 36px 24px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(91,124,246,0.06);
+            position: relative;
+            overflow: hidden;
+        }
+        .verifier-loader.active { display: block; }
+        .verifier-loader::before {
+            content: '';
+            position: absolute; top: 0; left: -100%;
+            width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), var(--accent-2), transparent);
+            animation: shimmer-line 2s ease-in-out infinite;
+        }
+        @keyframes shimmer-line {
+            0%   { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .verifier-loader__ring {
+            position: relative;
+            width: 72px; height: 72px;
+            margin: 0 auto 20px;
+        }
+        .verifier-loader__ring svg { animation: rotate-ring 2s linear infinite; }
+        @keyframes rotate-ring { to { transform: rotate(360deg); } }
+
+        .verifier-loader__ring-track { fill: none; stroke: var(--border); stroke-width: 3; }
+        .verifier-loader__ring-fill {
+            fill: none; stroke-width: 3; stroke-linecap: round;
+            stroke: url(#loader-gradient);
+            stroke-dasharray: 180;
+            stroke-dashoffset: 120;
+            animation: ring-dash 1.8s ease-in-out infinite;
+        }
+        @keyframes ring-dash {
+            0%   { stroke-dashoffset: 180; }
+            50%  { stroke-dashoffset: 30; }
+            100% { stroke-dashoffset: 180; }
+        }
+
+        .verifier-loader__icon {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            animation: icon-bounce 2s ease-in-out infinite;
+        }
+        @keyframes icon-bounce {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
+            50%  { transform: translate(-50%, -55%) scale(1.1); opacity: 1; }
+        }
+
+        .verifier-loader__title {
+            font-size: 15px; font-weight: 600; color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        .verifier-loader__sub {
+            font-size: 12px; color: var(--text-muted); margin-bottom: 20px;
+        }
+
+        /* Animated steps inside loader */
+        .verifier-loader__steps {
+            display: flex; justify-content: center; gap: 6px; flex-wrap: wrap;
+        }
+        .vl-step {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 5px 12px; border-radius: 100px;
+            font-size: 11px; font-weight: 500;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            transition: all 0.5s ease;
+        }
+        .vl-step.active {
+            background: var(--accent-glow);
+            border-color: rgba(91,124,246,0.3);
+            color: var(--accent-2);
+        }
+        .vl-step.done {
+            background: var(--green-dim);
+            border-color: rgba(16,185,129,0.2);
+            color: var(--green);
+        }
+        .vl-step-dot {
+            width: 5px; height: 5px; border-radius: 50%;
+            background: currentColor; flex-shrink: 0;
+        }
+
+        /* ── Results ─────────────────────────────────────────────────────── */
+        .results { display: none; }
+        .results.active { display: block; animation: fade-up 0.4s ease-out both; }
+        @keyframes fade-up {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Risk Banner */
+        .risk-banner {
+            display: flex; align-items: center; gap: 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px 28px; margin-bottom: 16px;
+            box-shadow: var(--shadow-card);
+            position: relative; overflow: hidden;
+        }
+        .risk-banner::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(91,124,246,0.3), transparent);
+        }
+
+        .gauge { position: relative; width: 96px; height: 96px; flex-shrink: 0; }
+        .gauge svg { transform: rotate(-90deg); }
+        .gauge__bg { fill: none; stroke: var(--border); stroke-width: 7; }
+        .gauge__fill {
+            fill: none; stroke-width: 7; stroke-linecap: round;
+            transition: stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1), stroke 0.5s ease;
+        }
+        .gauge__label {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px; font-weight: 700;
+            font-family: var(--font-mono);
+        }
+
+        .risk-info { flex: 1; }
+        .risk-info__label {
+            font-size: 18px; font-weight: 700; margin-bottom: 6px;
+        }
+        .risk-info__breakdown { display: flex; gap: 20px; flex-wrap: wrap; }
+        .risk-info__item { font-size: 12px; color: var(--text-secondary); }
+        .risk-info__item span {
+            font-weight: 600; font-family: var(--font-mono);
+            color: var(--text-primary);
+        }
+
+        .risk-low    { color: var(--green); }
+        .risk-medium { color: var(--yellow); }
+        .risk-high   { color: var(--red); }
+
+        /* Retry Badge */
+        .retry-badge {
+            display: none; align-items: center; gap: 8px;
+            background: rgba(245,158,11,0.08);
+            border: 1px solid rgba(245,158,11,0.2);
+            color: var(--yellow); font-size: 12px; font-weight: 500;
+            padding: 8px 16px; border-radius: var(--radius-sm);
+            margin-bottom: 16px; width: fit-content;
+        }
+        .retry-badge.visible { display: inline-flex; }
+
+        /* Answer Card */
+        .answer-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px; margin-bottom: 16px;
+            box-shadow: var(--shadow-card);
+        }
+        .card-label {
+            font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+            text-transform: uppercase; color: var(--text-muted);
+            margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+        }
+        .card-label-icon { font-size: 13px; }
+        .answer-card__text {
+            font-size: 15px; line-height: 1.75; color: var(--text-primary);
+            white-space: pre-wrap;
+        }
+
+        /* Sources */
+        .sources-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px 28px; margin-bottom: 16px;
+            box-shadow: var(--shadow-card);
+        }
+        .sources-badges { display: flex; gap: 8px; margin-bottom: 16px; }
+        .src-badge {
+            padding: 5px 14px; border-radius: 100px;
+            font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+        }
+        .src-badge--local { background: var(--purple-dim); color: var(--purple); }
+        .src-badge--web   { background: var(--cyan-dim); color: var(--cyan); }
+
+        .source-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px; margin-bottom: 8px;
+            cursor: pointer; transition: all var(--transition);
+        }
+        .source-item:hover { border-color: var(--border-focus); background: var(--bg-card-hover); }
+        .source-item__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .source-item__type {
+            font-size: 10px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.06em; padding: 2px 10px; border-radius: 100px;
+        }
+        .source-item__type--local { background: var(--purple-dim); color: var(--purple); }
+        .source-item__type--web   { background: var(--cyan-dim); color: var(--cyan); }
+        .source-item__score { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+        .source-item__ref { font-size: 12px; color: var(--accent); word-break: break-all; }
+        .source-item__text {
+            font-size: 12px; color: var(--text-secondary);
+            margin-top: 8px; display: none;
+            border-top: 1px solid var(--border); padding-top: 8px;
+        }
+        .source-item.expanded .source-item__text { display: block; }
+
+        /* Verification Section */
+        .verification-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 16px; overflow: hidden;
+            box-shadow: var(--shadow-card);
+        }
+        .verification-toggle {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 28px; cursor: pointer;
+            transition: background var(--transition);
+        }
+        .verification-toggle:hover { background: var(--bg-card-hover); }
+        .verification-toggle__title {
+            font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+            text-transform: uppercase; color: var(--text-muted);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .verification-toggle__arrow {
+            color: var(--text-muted); transition: transform var(--transition); font-size: 10px;
+        }
+        .verification-section.expanded .verification-toggle__arrow { transform: rotate(180deg); }
+        .verification-body { display: none; padding: 0 28px 28px; }
+        .verification-section.expanded .verification-body { display: block; }
+
+        .verification-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .verification-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+        }
+        .verification-panel__title {
+            font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+            text-transform: uppercase; color: var(--accent);
+            margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+        }
+        .verification-panel__stat { font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; }
+        .verification-panel__stat span {
+            font-weight: 600; font-family: var(--font-mono); color: var(--text-primary);
+        }
+        .cluster-list { margin-top: 10px; }
+        .cluster-item {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius-xs); padding: 9px 12px; margin-bottom: 6px;
+            font-size: 11px; color: var(--text-secondary);
+        }
+        .cluster-item__label { font-weight: 600; color: var(--text-primary); font-size: 11px; margin-bottom: 3px; }
+
+        /* Error Card */
+        .error-card {
+            display: none; background: rgba(239,68,68,0.07);
+            border: 1px solid rgba(239,68,68,0.25);
+            border-radius: var(--radius); padding: 20px 24px; margin-bottom: 16px;
+            color: var(--red);
+        }
+        .error-card.active { display: block; animation: fade-up 0.3s ease-out; }
+        .error-card__title { font-weight: 700; margin-bottom: 5px; font-size: 14px; }
+        .error-card__message { font-size: 13px; opacity: 0.85; }
+
+        /* Inline spinner */
+        .spinner {
+            width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.55s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Footer ──────────────────────────────────────────────────────── */
+        .footer {
+            text-align: center; margin-top: 60px;
+            font-size: 11px; color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+        .footer a { color: var(--text-muted); text-decoration: none; }
+        .footer a:hover { color: var(--accent); }
+
+        /* ── Responsive ──────────────────────────────────────────────────── */
+        @media (max-width: 640px) {
+            .hero { padding: 48px 0 36px; }
+            .hero__stats { gap: 16px; }
+            .input-row { flex-direction: column; }
+            .pipeline__track { flex-wrap: wrap; }
+            .verification-grid { grid-template-columns: 1fr; }
+            .risk-banner { flex-direction: column; text-align: center; }
+            .risk-info__breakdown { justify-content: center; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+
+        <!-- ── Hero ──────────────────────────────────────────────────────── -->
+        <header class="hero">
+            <div class="hero__eyebrow">
+                <span class="hero__eyebrow-dot"></span>
+                Multi-Agent LangGraph Pipeline
+            </div>
+            <h1 class="hero__title">
+                <span class="hero__title-line1">Research &amp; Fact-Verification</span>
+                <span class="hero__title-line2">AI Agent</span>
+            </h1>
+            <p class="hero__sub">
+                Upload documents, ask questions, and receive verified answers with
+                real-time hallucination risk scoring powered by semantic entropy analysis.
+            </p>
+            <div class="hero__stats">
+                <span class="hero__stat"><span class="hero__stat-dot"></span> Semantic Entropy</span>
+                <span class="hero__stat"><span class="hero__stat-dot"></span> Ensemble Disagreement</span>
+                <span class="hero__stat"><span class="hero__stat-dot"></span> RAG + Web Search</span>
+                <span class="hero__stat"><span class="hero__stat-dot"></span> LangGraph Workflow</span>
+            </div>
+        </header>
+
+        <div class="divider"></div>
+
+        <!-- ── Query Input ─────────────────────────────────────────────── -->
+        <section class="input-card" id="input-section">
+            <div class="input-card__label">Ask a Research Question</div>
+            <div class="input-row">
+                <input type="text" id="query-input" placeholder="e.g. What material is the JWST sunshield made of?" autocomplete="off">
+                <button class="btn btn--upload" id="upload-btn" title="Upload a document">
+                    📄 Upload
+                </button>
+                <button class="btn btn--primary" id="submit-btn">
+                    🔍 Research
+                </button>
+            </div>
+            <input type="file" id="file-input" accept=".pdf,.txt,.md">
+            <div class="upload-info" id="upload-info" style="display:none;">
+                <span>📎</span>
+                <span class="filename" id="upload-filename"></span>
+                <span class="chip" id="upload-chunks"></span>
+            </div>
+        </section>
+
+        <!-- ── Pipeline Progress ───────────────────────────────────────── -->
+        <section class="pipeline" id="pipeline">
+            <div class="pipeline__track">
+                <div class="step" id="step-planner">
+                    <span class="step__icon">🧠</span> Planner
+                </div>
+                <span class="step__arrow">→</span>
+                <div class="step" id="step-retriever">
+                    <span class="step__icon">🔎</span> Retriever
+                </div>
+                <span class="step__arrow">→</span>
+                <div class="step" id="step-synthesizer">
+                    <span class="step__icon">✍️</span> Synthesizer
+                </div>
+                <span class="step__arrow">→</span>
+                <div class="step" id="step-verifier">
+                    <span class="step__icon">🛡️</span> Verifier
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Verifier Loader (between Verifier step and Results) ──────── -->
+        <div class="verifier-loader" id="verifier-loader">
+            <svg style="width:0;height:0;position:absolute">
+                <defs>
+                    <linearGradient id="loader-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%"   stop-color="#5b7cf6"/>
+                        <stop offset="100%" stop-color="#a78bfa"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+            <div class="verifier-loader__ring">
+                <svg width="72" height="72" viewBox="0 0 72 72">
+                    <circle class="verifier-loader__ring-track" cx="36" cy="36" r="30"/>
+                    <circle class="verifier-loader__ring-fill"  cx="36" cy="36" r="30"/>
+                </svg>
+                <div class="verifier-loader__icon">🛡️</div>
+            </div>
+            <div class="verifier-loader__title">Verifying Answer</div>
+            <div class="verifier-loader__sub" id="vl-sub">Running hallucination detection pipeline…</div>
+            <div class="verifier-loader__steps">
+                <span class="vl-step" id="vl-entropy">
+                    <span class="vl-step-dot"></span> Semantic Entropy
+                </span>
+                <span class="vl-step" id="vl-samples">
+                    <span class="vl-step-dot"></span> Generating Samples
+                </span>
+                <span class="vl-step" id="vl-cluster">
+                    <span class="vl-step-dot"></span> Clustering
+                </span>
+                <span class="vl-step" id="vl-ensemble">
+                    <span class="vl-step-dot"></span> Ensemble Check
+                </span>
+                <span class="vl-step" id="vl-score">
+                    <span class="vl-step-dot"></span> Risk Score
+                </span>
+            </div>
+        </div>
+
+        <!-- ── Error ───────────────────────────────────────────────────── -->
+        <div class="error-card" id="error-card">
+            <div class="error-card__title" id="error-title">Error</div>
+            <div class="error-card__message" id="error-message"></div>
+        </div>
+
+        <!-- ── Results ────────────────────────────────────────────────── -->
+        <section class="results" id="results">
+
+            <!-- Risk Gauge -->
+            <div class="risk-banner" id="risk-banner">
+                <div class="gauge">
+                    <svg width="96" height="96" viewBox="0 0 96 96">
+                        <circle class="gauge__bg" cx="48" cy="48" r="40"/>
+                        <circle class="gauge__fill" id="gauge-fill" cx="48" cy="48" r="40"
+                            stroke-dasharray="251" stroke-dashoffset="251"/>
+                    </svg>
+                    <div class="gauge__label" id="gauge-label">0%</div>
+                </div>
+                <div class="risk-info">
+                    <div class="risk-info__label" id="risk-label">Hallucination Risk</div>
+                    <div class="risk-info__breakdown">
+                        <div class="risk-info__item">Entropy: <span id="entropy-score">—</span></div>
+                        <div class="risk-info__item">Disagreement: <span id="disagreement-score">—</span></div>
+                        <div class="risk-info__item">Confidence: <span id="confidence-score">—</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Retry Badge -->
+            <div class="retry-badge" id="retry-badge">
+                ↻ Query was refined <span id="retry-count">0</span> time(s) to reduce risk
+            </div>
+
+            <!-- Answer -->
+            <div class="answer-card">
+                <div class="card-label">
+                    <span class="card-label-icon">📝</span> Answer
+                </div>
+                <div class="answer-card__text" id="answer-text"></div>
+            </div>
+
+            <!-- Sources -->
+            <div class="sources-section">
+                <div class="card-label">
+                    <span class="card-label-icon">📚</span> Sources
+                </div>
+                <div class="sources-badges">
+                    <span class="src-badge src-badge--local" id="local-count">0 Local</span>
+                    <span class="src-badge src-badge--web" id="web-count">0 Web</span>
+                </div>
+                <div id="sources-list"></div>
+            </div>
+
+            <!-- Verification Details (collapsible) -->
+            <div class="verification-section" id="verification-section">
+                <div class="verification-toggle" id="verification-toggle">
+                    <span class="verification-toggle__title">🔬 Verification Details</span>
+                    <span class="verification-toggle__arrow">▼</span>
+                </div>
+                <div class="verification-body" id="verification-body">
+                    <div class="verification-grid">
+                        <div class="verification-panel" id="entropy-panel">
+                            <div class="verification-panel__title">📊 Semantic Entropy</div>
+                            <div id="entropy-details"></div>
+                        </div>
+                        <div class="verification-panel" id="disagreement-panel">
+                            <div class="verification-panel__title">⚖️ Ensemble Disagreement</div>
+                            <div id="disagreement-details"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="footer">
+            Research Agent · Semantic Entropy + Ensemble Disagreement · Built with LangGraph
+        </footer>
+    </div>
+
+    <script>
+        // ── State ────────────────────────────────────────────────────────────
+        const API = window.location.origin;
+        let uploadedCollection = '';
+
+        // ── DOM refs ─────────────────────────────────────────────────────────
+        const $ = (id) => document.getElementById(id);
+        const queryInput   = $('query-input');
+        const submitBtn    = $('submit-btn');
+        const uploadBtn    = $('upload-btn');
+        const fileInput    = $('file-input');
+        const uploadInfo   = $('upload-info');
+        const pipeline     = $('pipeline');
+        const results      = $('results');
+        const errorCard    = $('error-card');
+        const verifierLoader = $('verifier-loader');
+
+        // ── Upload ───────────────────────────────────────────────────────────
+        uploadBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            $('upload-filename').textContent = file.name;
+            $('upload-chunks').textContent = 'uploading…';
+            uploadInfo.style.display = 'flex';
+            const fd = new FormData();
+            fd.append('file', file);
+            try {
+                const res = await fetch(`${API}/upload`, { method: 'POST', body: fd });
+                if (!res.ok) throw new Error(await res.text());
+                const data = await res.json();
+                uploadedCollection = data.collection_id;
+                $('upload-chunks').textContent = `${data.n_chunks} chunks`;
+            } catch (err) {
+                $('upload-chunks').textContent = 'failed';
+                showError('Upload Failed', err.message);
+            }
+        });
+
+        // ── Submit ───────────────────────────────────────────────────────────
+        submitBtn.addEventListener('click', runQuery);
+        queryInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runQuery(); }
+        });
+
+        // ── Verifier Loader animation ─────────────────────────────────────
+        let vlInterval = null;
+        const vlSteps = [
+            { id: 'vl-entropy',  label: 'Running semantic entropy…' },
+            { id: 'vl-samples',  label: 'Generating answer samples…' },
+            { id: 'vl-cluster',  label: 'Clustering by meaning…' },
+            { id: 'vl-ensemble', label: 'Running ensemble disagreement…' },
+            { id: 'vl-score',    label: 'Computing final risk score…' },
+        ];
+
+        function startVerifierLoader() {
+            verifierLoader.classList.add('active');
+            let vlIdx = 0;
+            vlSteps.forEach(s => {
+                const el = $(s.id);
+                el.classList.remove('active', 'done');
+            });
+
+            vlInterval = setInterval(() => {
+                vlSteps.forEach((s, i) => {
+                    const el = $(s.id);
+                    el.classList.remove('active', 'done');
+                    if (i < vlIdx) el.classList.add('done');
+                    else if (i === vlIdx) el.classList.add('active');
+                });
+                $('vl-sub').textContent = vlSteps[Math.min(vlIdx, vlSteps.length - 1)].label;
+                vlIdx++;
+                if (vlIdx > vlSteps.length) vlIdx = vlSteps.length; // stay on last
+            }, 6000); // ~6s per step (matches real timing)
+        }
+
+        function stopVerifierLoader() {
+            clearInterval(vlInterval);
+            vlInterval = null;
+            // Mark all done briefly then hide
+            vlSteps.forEach(s => {
+                $(s.id).classList.remove('active');
+                $(s.id).classList.add('done');
+            });
+            setTimeout(() => { verifierLoader.classList.remove('active'); }, 400);
+        }
+
+        // ── Main query flow ───────────────────────────────────────────────
+        async function runQuery() {
+            const question = queryInput.value.trim();
+            if (!question) return;
+
+            hideError();
+            results.classList.remove('active');
+            verifierLoader.classList.remove('active');
+            pipeline.classList.add('active');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner"></span> Researching…';
+
+            // Pipeline step animation
+            const pSteps = ['planner', 'retriever', 'synthesizer', 'verifier'];
+            let stepIdx = 0;
+            const stepInterval = setInterval(() => {
+                pSteps.forEach((s, i) => {
+                    const el = $(`step-${s}`);
+                    el.classList.remove('active', 'done');
+                    if (i < stepIdx) el.classList.add('done');
+                    else if (i === stepIdx) el.classList.add('active');
+                });
+                // After verifier step activates → show verifier loader
+                if (stepIdx === 3) startVerifierLoader();
+                stepIdx++;
+                if (stepIdx > pSteps.length) clearInterval(stepInterval);
+            }, 2000);
+
+            try {
+                const res = await fetch(`${API}/query`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question, collection: uploadedCollection }),
+                });
+
+                clearInterval(stepInterval);
+                pSteps.forEach(s => $(`step-${s}`).classList.add('done'));
+                stopVerifierLoader();
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({ detail: res.statusText }));
+                    throw new Error(err.detail || JSON.stringify(err));
+                }
+
+                const data = await res.json();
+                renderResults(data);
+            } catch (err) {
+                clearInterval(stepInterval);
+                stopVerifierLoader();
+                showError('Query Failed', err.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '🔍 Research';
+            }
+        }
+
+        // ── Render Results ────────────────────────────────────────────────
+        function renderResults(data) {
+            results.classList.add('active');
+
+            // Gauge
+            const risk = data.combined_risk_score || 0;
+            const pct  = Math.round(risk * 100);
+            const circ = 251;
+            const offset = circ - (risk * circ);
+            const fill = $('gauge-fill');
+            fill.style.strokeDashoffset = offset;
+            fill.style.stroke = risk < 0.3 ? 'var(--green)' : risk < 0.6 ? 'var(--yellow)' : 'var(--red)';
+
+            const label = $('gauge-label');
+            label.textContent = `${pct}%`;
+            label.className = `gauge__label risk-${(data.risk_label || 'low').toLowerCase()}`;
+
+            $('risk-label').textContent = `Hallucination Risk: ${data.risk_label || 'LOW'}`;
+            $('risk-label').className = `risk-info__label risk-${(data.risk_label || 'low').toLowerCase()}`;
+            $('entropy-score').textContent      = `${Math.round((data.semantic_entropy_score || 0) * 100)}%`;
+            $('disagreement-score').textContent = `${Math.round((data.ensemble_disagreement_score || 0) * 100)}%`;
+            $('confidence-score').textContent   = `${Math.round((data.retrieval_confidence || 0) * 100)}%`;
+
+            // Retry badge
+            const rb = $('retry-badge');
+            if (data.retry_count > 0) {
+                rb.classList.add('visible');
+                $('retry-count').textContent = data.retry_count;
+            } else {
+                rb.classList.remove('visible');
+            }
+
+            // Answer
+            $('answer-text').textContent = data.answer || '';
+
+            // Sources
+            const sources     = data.sources || [];
+            const localSrcs   = sources.filter(s => s.type === 'local');
+            const webSrcs     = sources.filter(s => s.type === 'web');
+            $('local-count').textContent = `${localSrcs.length} Local`;
+            $('web-count').textContent   = `${webSrcs.length} Web`;
+
+            $('sources-list').innerHTML = sources.map((s) => `
+                <div class="source-item" onclick="this.classList.toggle('expanded')">
+                    <div class="source-item__header">
+                        <span class="source-item__type source-item__type--${s.type}">${s.type}</span>
+                        <span class="source-item__score">${s.score ? (s.score * 100).toFixed(0) + '%' : ''}</span>
+                    </div>
+                    <div class="source-item__ref">${s.url || s.ref || `Source ${s.id}`}</div>
+                    <div class="source-item__text">${s.text || ''}</div>
+                </div>
+            `).join('');
+
+            // Verification details
+            const vd = data.verification_details || {};
+            const se = vd.semantic_entropy || {};
+            const ed = vd.ensemble_disagreement || {};
+
+            let entropyHTML = `
+                <div class="verification-panel__stat">Clusters: <span>${se.n_clusters || '—'}</span></div>
+                <div class="verification-panel__stat">Entropy: <span>${se.entropy?.toFixed(3) || '—'} bits</span></div>
+                <div class="verification-panel__stat">Max Entropy: <span>${se.max_entropy?.toFixed(3) || '—'} bits</span></div>
+                <div class="verification-panel__stat">Risk Score: <span>${se.risk_score ? (se.risk_score * 100).toFixed(0) + '%' : '—'}</span></div>
+            `;
+            if (se.clusters?.length > 0) {
+                entropyHTML += '<div class="cluster-list">';
+                se.clusters.forEach((c, i) => {
+                    entropyHTML += `<div class="cluster-item">
+                        <div class="cluster-item__label">Cluster ${i + 1} (${c.length} sample${c.length > 1 ? 's' : ''})</div>
+                        ${c.map(s => `<div style="font-size:11px;color:var(--text-muted);margin-top:3px;">• ${s}</div>`).join('')}
+                    </div>`;
+                });
+                entropyHTML += '</div>';
+            }
+            $('entropy-details').innerHTML = entropyHTML;
+
+            $('disagreement-details').innerHTML = `
+                <div class="verification-panel__stat">Model 1: <span>${ed.model1 || '—'}</span></div>
+                <div class="verification-panel__stat">Model 2: <span>${ed.model2 || '—'}</span></div>
+                <div class="verification-panel__stat">Contradictions: <span>${ed.contradictions_found ?? '—'} / ${ed.total_claim_pairs ?? '—'}</span></div>
+                <div class="verification-panel__stat">Score: <span>${ed.disagreement_score ? (ed.disagreement_score * 100).toFixed(0) + '%' : '—'}</span></div>
+                ${ed.model1_claims?.length ? `<div style="margin-top:10px;font-size:11px;color:var(--text-muted);">
+                    <strong style="color:var(--text-secondary);">Model 1 claims:</strong>
+                    ${ed.model1_claims.map(c => `<div style="margin-top:3px;">• ${c}</div>`).join('')}
+                </div>` : ''}
+                ${ed.model2_claims?.length ? `<div style="margin-top:10px;font-size:11px;color:var(--text-muted);">
+                    <strong style="color:var(--text-secondary);">Model 2 claims:</strong>
+                    ${ed.model2_claims.map(c => `<div style="margin-top:3px;">• ${c}</div>`).join('')}
+                </div>` : ''}
+            `;
+        }
+
+        // ── Verification toggle ───────────────────────────────────────────
+        $('verification-toggle').addEventListener('click', () => {
+            $('verification-section').classList.toggle('expanded');
+        });
+
+        // ── Error helpers ─────────────────────────────────────────────────
+        function showError(title, message) {
+            $('error-title').textContent   = title;
+            $('error-message').textContent = message;
+            errorCard.classList.add('active');
+        }
+        function hideError() { errorCard.classList.remove('active'); }
+    </script>
+</body>
+</html>

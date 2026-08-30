@@ -1,0 +1,119 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# AI Research & Fact-Verification Agent — Docker Compose
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Services:
+#   api          — FastAPI + LangGraph + Verifier (NLI via HF Inference API)
+#   qdrant       — Vector database
+#   mcp-qdrant   — MCP server wrapping Qdrant search/upsert
+#   mcp-tavily   — MCP server wrapping Tavily web search
+#   mcp-verifier — (Stretch) Verification pipeline as MCP tool
+#
+# Usage:
+#   cp .env.example .env   # Fill in your API keys
+#   docker-compose up --build
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+  # ── Qdrant Vector Database ─────────────────────────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - research-agent-net
+
+  # ── MCP Server: Qdrant Retrieval ───────────────────────────────────────────
+  mcp-qdrant:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp-qdrant
+    ports:
+      - "8001:8001"
+    env_file: .env
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - MCP_TRANSPORT=http
+      - HF_TOKEN=${HF_API_TOKEN}
+
+    depends_on:
+      qdrant:
+        condition: service_started
+    networks:
+      - research-agent-net
+
+  # ── MCP Server: Tavily Web Search ──────────────────────────────────────────
+  mcp-tavily:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp-tavily
+    ports:
+      - "8002:8002"
+    env_file: .env
+    environment:
+      - MCP_TRANSPORT=http
+      - HF_TOKEN=${HF_API_TOKEN}
+
+    networks:
+      - research-agent-net
+
+  # ── MCP Server: Verification Pipeline (Stretch Goal) ───────────────────────
+  mcp-verifier:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp-verifier
+    ports:
+      - "8003:8003"
+    env_file: .env
+    environment:
+      - MCP_TRANSPORT=http
+      - HF_TOKEN=${HF_API_TOKEN}
+
+    networks:
+      - research-agent-net
+
+  # ── API: FastAPI + LangGraph ───────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    volumes:
+      # - ./src:/app/src    # ← Dev only: comment out for production (uses baked image code)
+      - hf_cache:/root/.cache/huggingface
+    env_file: .env
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - MCP_QDRANT_URL=http://mcp-qdrant:8001/mcp
+      - MCP_TAVILY_URL=http://mcp-tavily:8002/mcp
+      - MCP_TRANSPORT=http
+      - HF_TOKEN=${HF_API_TOKEN}
+
+    depends_on:
+      qdrant:
+        condition: service_started
+      mcp-qdrant:
+        condition: service_started
+      mcp-tavily:
+        condition: service_started
+    networks:
+      - research-agent-net
+
+# ── Volumes ──────────────────────────────────────────────────────────────────
+volumes:
+  qdrant_data:
+    driver: local
+  hf_cache:
+    driver: local
+
+# ── Network ──────────────────────────────────────────────────────────────────
+networks:
+  research-agent-net:
+    driver: bridge

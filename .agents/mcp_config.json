@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "research-verifier": {
+      "command": "python",
+      "args": [
+        "mcp_servers/verifier_server.py",
+        "--transport",
+        "stdio"
+      ]
+    }
+  }
+}
