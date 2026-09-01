@@ -85,7 +85,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # - ./src:/app/src # ← Dev only: comment out for production (uses baked image code)
+      - ./src:/app/src # ← Dev only: comment out for production (uses baked image code)
       - hf_cache:/root/.cache/huggingface
     env_file: .env
     environment:
