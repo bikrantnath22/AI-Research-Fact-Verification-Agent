@@ -1,0 +1,29 @@
+name: Deploy to EC2 Free Tier
+
+on:
+  push:
+    branches:
+      - master # Or 'main'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Deploy to Server via SSH
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ubuntu
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          cd AI-Research-Fact-Verification-Agent
+          
+          # Pull the latest code from the repository
+          git pull origin master
+          
+          # Rebuild and restart the containers in the background
+          docker compose up -d --build
