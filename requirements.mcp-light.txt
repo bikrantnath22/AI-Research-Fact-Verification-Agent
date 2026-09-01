@@ -1,0 +1,24 @@
+# ── MCP Light Server — Slim Requirements ──
+# For mcp-tavily and mcp-verifier containers
+# No PyTorch / sentence-transformers / NLI model needed
+
+# Orchestration (needed by verifier_server.py)
+langgraph>=0.2.0
+langchain-core>=0.3.0
+
+# LLM (needed by verifier_server.py for ensemble disagreement)
+groq>=0.12.0
+
+# Web Search (needed by tavily_server.py)
+tavily-python>=0.4.0
+
+# MCP
+mcp>=1.1.0,<1.3.0
+
+# Backend
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+
+# Config
+python-dotenv>=1.0.0
+pydantic-settings>=2.4.0
