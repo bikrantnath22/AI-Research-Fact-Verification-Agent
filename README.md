@@ -10,37 +10,7 @@ A multi-agent AI research system built with **LangGraph** that plans queries, re
 
 ---
 
-## Architecture
 
-```mermaid
-graph TD
-    USER([User Query + Documents]) --> API[FastAPI Backend :8000]
-    API --> GRAPH[LangGraph State Graph]
-
-    subgraph GRAPH[LangGraph Agent Pipeline]
-        PLAN[🧠 Planner Agent] --> RETRIEVE[🔎 Retriever Agent]
-        RETRIEVE -->|confidence < 0.5| WEB[🌐 Web Search]
-        RETRIEVE -->|confidence ≥ 0.5| SYNTH[✍️ Synthesizer]
-        WEB --> SYNTH
-        SYNTH --> VERIFY[🛡️ Verifier Agent]
-        VERIFY -->|risk > 0.6 AND retries < 2| REFINE[♻️ Refine Query]
-        VERIFY -->|risk ≤ 0.6 OR retries ≥ 2| OUTPUT([📤 Verified Answer])
-        REFINE --> RETRIEVE
-    end
-
-    RETRIEVE -.->|MCP| MCP_Q[MCP: Qdrant :8001]
-    RETRIEVE -.->|MCP| MCP_T[MCP: Tavily :8002]
-    MCP_Q --> QDRANT[(Qdrant :6333)]
-    MCP_T --> TAVILY[Tavily API]
-    VERIFY -.-> HF[Local NLI (DeBERTa)]
-    VERIFY -.-> GROQ[Groq API]
-
-    style PLAN fill:#1a2035,stroke:#4f6cf7
-    style RETRIEVE fill:#1a2035,stroke:#4f6cf7
-    style SYNTH fill:#1a2035,stroke:#4f6cf7
-    style VERIFY fill:#1a2035,stroke:#4f6cf7
-    style REFINE fill:#1a2035,stroke:#eab308
-```
 
 ### Docker Service Topology
 
@@ -59,7 +29,7 @@ graph TD
 │                 └──────────────────────────────-┘            │
 │                                                             │
 │  ┌───────────────────┐                                      │
-│  │ MCP: Verifier     │  ← Stretch goal                     │
+│  │ MCP: Verifier     │  ← Stretch goal (Claude Desktop)    │
 │  │  :8003 HTTP       │                                      │
 │  └───────────────────┘                                      │
 └─────────────────────────────────────────────────────────────┘
@@ -77,7 +47,7 @@ graph TD
 | **Synthesizer** | Drafts answer with inline `[Source N]` citations | Groq LLM with formatted source context |
 | **Verifier** | Detects hallucination risk | Semantic entropy (60%) + Ensemble disagreement (40%) |
 
-### Verification Pipeline (from [llm-hallu](../llm-hallu/))
+
 
 1. **Semantic Entropy**: Generate N samples at high temperature → cluster using a **hybrid approach** (embedding cosine similarity + bidirectional NLI contradiction veto via local `microsoft/deberta-large-mnli`) → compute Shannon entropy → normalized risk score.
 2. **Ensemble Disagreement**: Extract claims from answers by two Groq models (`openai/gpt-oss-20b` + `openai/gpt-oss-120b`) → check all claim pairs for NLI contradictions → contradiction ratio.
@@ -228,9 +198,9 @@ Question: "What were the outcomes of the 2027 Geneva AI Summit?"
 
 ## MCP Integration
 
-### Using the Verification MCP Server with an MCP Client
+### Using the Verification MCP Server with Claude Desktop
 
-Add to your MCP client configuration (e.g., `mcp_config.json`):
+Add to your `claude_desktop_config.json`:
 
 ```json
 {
@@ -242,7 +212,7 @@ Add to your MCP client configuration (e.g., `mcp_config.json`):
 }
 ```
 
-Then in your MCP client, you can invoke:
+Then in Claude Desktop, you can invoke:
 > "Use the verify_answer tool to check if this claim is reliable: ..."
 
 ---
@@ -284,7 +254,7 @@ Research-Agent/
 │   └── verifier_server.py
 │
 └── frontend/
-    └── index.html              # Vanilla HTML/CSS/JS dashboard (Premium UI)
+    └── index.html              # Vanilla HTML/CSS/JS dashboard (UI)
 ```
 
 ---
