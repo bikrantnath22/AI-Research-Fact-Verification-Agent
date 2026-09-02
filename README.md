@@ -45,13 +45,14 @@ A multi-agent AI research system built with **LangGraph** that plans queries, re
 | **Planner** | Decomposes query into sub-questions + search terms | Groq LLM with structured JSON output |
 | **Retriever** | Searches Qdrant (local docs) + conditional Tavily (web) | Confidence scoring, merge/dedup |
 | **Synthesizer** | Drafts answer with inline `[Source N]` citations | Groq LLM with formatted source context |
-| **Verifier** | Detects hallucination risk | Semantic entropy (60%) + Ensemble disagreement (40%) |
+| **Verifier** | Detects hallucination risk | Semantic entropy (50%) + Ensemble disagreement (30%) + Faithfulness (20%) |
 
 
 
 1. **Semantic Entropy**: Generate N samples at high temperature → cluster using a **hybrid approach** (embedding cosine similarity + bidirectional NLI contradiction veto via local `microsoft/deberta-large-mnli`) → compute Shannon entropy → normalized risk score.
 2. **Ensemble Disagreement**: Extract claims from answers by two Groq models (`openai/gpt-oss-20b` + `openai/gpt-oss-120b`) → check all claim pairs for NLI contradictions → contradiction ratio.
-3. **Combined**: `0.6 × entropy_risk + 0.4 × disagreement_score`
+3. **Faithfulness Checker**: Extract factual claims from the final synthesized answer → check each claim against the retrieved source chunks using NLI → calculate the ratio of unsupported/contradicted claims.
+4. **Combined**: `0.5 × entropy_risk + 0.3 × disagreement_score + 0.2 × faithfulness_score`
 
 ---
 
