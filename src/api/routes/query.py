@@ -84,6 +84,7 @@ async def run_query(req: QueryRequest):
         risk_label=result.get("risk_label", "LOW"),
         semantic_entropy_score=round(result.get("semantic_entropy_score", 0.0), 4),
         ensemble_disagreement_score=round(result.get("ensemble_disagreement_score", 0.0), 4),
+        faithfulness_score=round(result.get("faithfulness_score", 0.0), 4),
         verification_details=VerificationDetails(**verification_details) if verification_details else VerificationDetails(),
         retry_count=result.get("retry_count", 0),
         refined_query=result.get("refined_query", ""),

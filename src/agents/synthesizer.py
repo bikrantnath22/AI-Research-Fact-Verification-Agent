@@ -86,7 +86,7 @@ def synthesizer_node(state: AgentState) -> dict:
 
     Calls Groq with the retrieved chunks formatted as numbered sources,
     instructing the LLM to produce an answer with inline ``[Source N]``
-    citations.
+    citations. Retries with fewer sources if the first attempt fails.
     """
     settings = get_settings()
     query = state.get("refined_query") or state["original_query"]
@@ -99,27 +99,50 @@ def synthesizer_node(state: AgentState) -> dict:
                 n_local, n_web, query[:80])
 
     client = Groq(api_key=settings.groq_api_key)
-    response = client.chat.completions.create(
-        model=settings.primary_model,
-        messages=[
-            {"role": "system", "content": SYNTHESIS_SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": (
-                    f"Question: {query}\n\n"
-                    f"Retrieved Sources:\n\n{context}\n\n"
-                    f"Please answer the question using the sources above."
-                ),
-            },
-        ],
-        temperature=0.3,
-        max_tokens=1024,
-    )
 
-    draft = response.choices[0].message.content.strip()
+    draft = ""
+    # Try up to 3 attempts; on failure, truncate context to reduce token load
+    for attempt, max_ctx_chars in enumerate([None, 8000, 4000]):
+        try:
+            ctx = context[:max_ctx_chars] if max_ctx_chars else context
+            if attempt > 0:
+                logger.warning(
+                    "Synthesizer retry %d: truncating context to %d chars",
+                    attempt, max_ctx_chars,
+                )
+            response = client.chat.completions.create(
+                model=settings.primary_model,
+                messages=[
+                    {"role": "system", "content": SYNTHESIS_SYSTEM_PROMPT},
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Question: {query}\n\n"
+                            f"Retrieved Sources:\n\n{ctx}\n\n"
+                            f"Please answer the question using the sources above."
+                        ),
+                    },
+                ],
+                temperature=0.3,
+                max_tokens=1024,
+            )
+            draft = (response.choices[0].message.content or "").strip()
+            if draft:
+                break
+        except Exception as exc:
+            logger.error("Synthesizer attempt %d failed: %s", attempt + 1, exc)
+
+    if not draft:
+        draft = (
+            "The system was unable to synthesize an answer from the retrieved sources. "
+            "This may be due to a temporary API error. Please try again."
+        )
+        logger.warning("Synthesizer produced empty answer — using fallback message")
+
     logger.info("Synthesizer produced answer (%d chars)", len(draft))
 
     return {
         "draft_answer": draft,
         "sources": sources,
     }
+

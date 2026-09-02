@@ -39,6 +39,7 @@ class AgentState(TypedDict, total=False):
     # ── Verifier Output ───────────────────────────────────────────────────
     semantic_entropy_score: float
     ensemble_disagreement_score: float
+    faithfulness_score: float      # 0 = fully faithful, 1 = fully unfaithful
     combined_risk_score: float
     risk_label: str                # "LOW" | "MEDIUM" | "HIGH"
     verification_details: dict

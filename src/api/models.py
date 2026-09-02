@@ -49,7 +49,9 @@ class VerificationDetails(BaseModel):
 
     semantic_entropy: dict = {}
     ensemble_disagreement: dict = {}
-    weights: dict = {"semantic_entropy": 0.6, "ensemble_disagreement": 0.4}
+    faithfulness: dict = {}
+    context_injected: bool = False
+    weights: dict = {"semantic_entropy": 0.5, "ensemble_disagreement": 0.3, "faithfulness": 0.2}
 
 
 class QueryResponse(BaseModel):
@@ -66,6 +68,7 @@ class QueryResponse(BaseModel):
     risk_label: str = "LOW"
     semantic_entropy_score: float = 0.0
     ensemble_disagreement_score: float = 0.0
+    faithfulness_score: float = 0.0
     verification_details: VerificationDetails = VerificationDetails()
 
     # Loop metadata

@@ -1087,6 +1087,7 @@
             <div class="hero__stats">
                 <span class="hero__stat"><span class="hero__stat-dot"></span> Semantic Entropy</span>
                 <span class="hero__stat"><span class="hero__stat-dot"></span> Ensemble Disagreement</span>
+                <span class="hero__stat"><span class="hero__stat-dot"></span> Faithfulness Checker</span>
                 <span class="hero__stat"><span class="hero__stat-dot"></span> RAG + Web Search</span>
                 <span class="hero__stat"><span class="hero__stat-dot"></span> LangGraph Workflow</span>
             </div>
@@ -1168,6 +1169,9 @@
                 <span class="vl-step" id="vl-ensemble">
                     <span class="vl-step-dot"></span> Ensemble Check
                 </span>
+                <span class="vl-step" id="vl-faithful">
+                    <span class="vl-step-dot"></span> Faithfulness
+                </span>
                 <span class="vl-step" id="vl-score">
                     <span class="vl-step-dot"></span> Risk Score
                 </span>
@@ -1198,6 +1202,7 @@
                     <div class="risk-info__breakdown">
                         <div class="risk-info__item">Entropy: <span id="entropy-score">—</span></div>
                         <div class="risk-info__item">Disagreement: <span id="disagreement-score">—</span></div>
+                        <div class="risk-info__item">Faithfulness Risk: <span id="faithfulness-score">—</span></div>
                         <div class="risk-info__item">Confidence (Local Retrieval Only): <span id="confidence-score">—</span></div>
                     </div>
                 </div>
@@ -1243,6 +1248,10 @@
                         <div class="verification-panel" id="disagreement-panel">
                             <div class="verification-panel__title">⚖️ Ensemble Disagreement</div>
                             <div id="disagreement-details"></div>
+                        </div>
+                        <div class="verification-panel" id="faithfulness-panel" style="grid-column: 1 / -1;">
+                            <div class="verification-panel__title">🔗 Faithfulness Check</div>
+                            <div id="faithfulness-details"></div>
                         </div>
                     </div>
                 </div>
@@ -1307,6 +1316,7 @@
             { id: 'vl-samples', label: 'Generating answer samples…' },
             { id: 'vl-cluster', label: 'Clustering by meaning…' },
             { id: 'vl-ensemble', label: 'Running ensemble disagreement…' },
+            { id: 'vl-faithful', label: 'Checking faithfulness to sources…' },
             { id: 'vl-score', label: 'Computing final risk score…' },
         ];
 
@@ -1419,6 +1429,9 @@
             $('risk-label').className = `risk-info__label risk-${(data.risk_label || 'low').toLowerCase()}`;
             $('entropy-score').textContent = `${Math.round((data.semantic_entropy_score || 0) * 100)}%`;
             $('disagreement-score').textContent = `${Math.round((data.ensemble_disagreement_score || 0) * 100)}%`;
+            $('faithfulness-score').textContent = data.faithfulness_score !== undefined
+                ? `${Math.round(data.faithfulness_score * 100)}%`
+                : '—';
             $('confidence-score').textContent = `${Math.round((data.retrieval_confidence || 0) * 100)}%`;
 
             // Retry badge
@@ -1473,6 +1486,30 @@
                 entropyHTML += '</div>';
             }
             $('entropy-details').innerHTML = entropyHTML;
+
+            // Faithfulness panel
+            const fd = vd.faithfulness || {};
+            let faithHTML = '';
+            if (fd.skipped) {
+                faithHTML = `<div class="verification-panel__stat" style="color:var(--text-muted);">Skipped — no sources or no answer available.</div>`;
+            } else {
+                const faithColor = fd.faithfulness_score === 0 ? 'var(--green)'
+                    : fd.faithfulness_score < 0.3 ? 'var(--yellow)' : 'var(--red)';
+                faithHTML = `
+                    <div class="verification-panel__stat">Total Claims Extracted: <span>${fd.total_claims ?? '—'}</span></div>
+                    <div class="verification-panel__stat">Unsupported Claims: <span style="color:${faithColor};">${fd.unfaithful_claims ?? '—'}</span></div>
+                    <div class="verification-panel__stat">Faithfulness Risk Score: <span style="color:${faithColor};">${fd.faithfulness_score !== undefined ? (fd.faithfulness_score * 100).toFixed(0) + '%' : '—'}</span></div>
+                `;
+                if (fd.unfaithful_claim_texts?.length > 0) {
+                    faithHTML += `<div style="margin-top:10px;font-size:11px;color:var(--text-muted);">
+                        <strong style="color:var(--red);">⚠️ Unsupported claims:</strong>
+                        ${fd.unfaithful_claim_texts.map(c => `<div style="margin-top:4px;">• ${c}</div>`).join('')}
+                    </div>`;
+                } else if (fd.total_claims > 0) {
+                    faithHTML += `<div style="margin-top:8px;font-size:11px;color:var(--green);">✅ All claims supported by retrieved sources.</div>`;
+                }
+            }
+            $('faithfulness-details').innerHTML = faithHTML;
 
             $('disagreement-details').innerHTML = `
                 <div class="verification-panel__stat">Model 1: <span>${ed.model1 || '—'}</span></div>
