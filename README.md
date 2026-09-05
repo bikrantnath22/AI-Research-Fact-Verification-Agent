@@ -260,6 +260,4 @@ Research-Agent/
 
 ---
 
-## Related Projects
 
-- **[llm-hallu](../llm-hallu/)** — The original hallucination detection pipeline that this project's verification module is built upon.
