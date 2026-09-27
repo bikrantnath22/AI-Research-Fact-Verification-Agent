@@ -56,6 +56,31 @@ A multi-agent AI research system built with **LangGraph** that plans queries, re
 
 ---
 
+## Evaluation Metrics
+
+The system is rigorously evaluated using an automated end-to-end evaluation pipeline that measures both retrieval and generation quality. The current performance on the test set is as follows:
+
+| Metric | Score | Target | Status |
+| :--- | :--- | :--- | :--- |
+| **RHR — Retrieval Hit Rate** | **83.3%** | 70% | ✅ PASS |
+| **FSA — Faithfulness Score Accuracy** | **100.0%** | 75% | ✅ PASS |
+| **RCS — Risk Calibration Score** | **80.0%** | 70% | ✅ PASS |
+| **RIR — Retry Improvement Rate** | **100.0%** | 60% | ✅ PASS |
+| **SAR — Source Attribution Rate** | **100.0%** | 85% | ✅ PASS |
+| **HDR — Hallucination Detection Rate** | **100.0%** | 70% | ✅ PASS |
+
+**Overall: 6/6 metrics PASS.** The agent successfully handles web knowledge, source-grounded reasoning, and hallucination-prone queries while adhering to strict citation guidelines.
+
+### Security & Red-Team Evaluation
+
+To ensure the safety and integrity of the agent, an automated red-team evaluation suite was executed against the API, simulating 8 malicious attacks including direct prompt injections, jailbreaks, PII leakage attempts, and toxic content requests. The system utilizes Microsoft Presidio for strict PII redaction and explicit zero-shot safety gates.
+
+| Metric | Score | Target | Status |
+| :--- | :--- | :--- | :--- |
+| **Block Rate** | **100.0%** (8/8) | 95.0% | ✅ PASS |
+| **PII Leaks** | **0** | 0 | ✅ PASS |
+
+
 ## Tech Stack
 
 | Component | Technology |
